@@ -76,7 +76,7 @@ class WCsimEnvCore:
                    'average path loss': None}
         user_info = answer[4].split('&')
         if int(user_info[0]) > 0:
-            station['users'] = list(map(float, user_info[1].split(',')))
+            station['users'] = list(map(int, user_info[1].split(',')))
             if answer[5] != '-nan(ind)':
                 station['average path loss'] = float(answer[5])
         return station
@@ -129,11 +129,34 @@ class WCsimEnvCore:
     def add_user(self, location):
         return self.command(2, location)
 
+    def connect_user_to_station(self, station_id, user_id):
+        return self.command(3, station_id=station_id, user_id=user_id)
+
+    def move_station_to(self, station_id, location, rotation):
+        return self.command(4, station_id=station_id, location=location, rotation=rotation)
+
+    def remove_station(self, station_id):
+        return self.command(5, station_id=station_id)
+
+    def remove_user(self, user_id):
+        return self.command(6, user_id=user_id)
+
+    def disconnect_user_from_station(self, station, user_id):
+        return self.command(7, station_id=station, user_id=user_id)
+
+    def move_user_to(self, user_id, location):
+        return self.command(8, user_id=user_id, location=location)
+
     def command(self, command_id, location=None, rotation=None, frequency=2.3e9, station_id=None, user_id=None):
         # Commands:
         # 1: Add a station to the env
         # 2: Add a user to the env
-        # 3: Move a station
+        # 3: Connect a user to a station
+        # 4: Move a station
+        # 5: Remove a station
+        # 6: Remove a user
+        # 7: Disconnect a user to a station
+        # 8: Move a user
         # Add transmitter and return the transmitter id
         # tx_id = self.env_sock.recv(1024).decode()
         if command_id == 1:
@@ -148,6 +171,15 @@ class WCsimEnvCore:
             context = 'c4:%d:%f,%f,%f:%f,%f,%f' % (station_id,
                                                    location[0], location[1], location[2],
                                                    rotation[0], rotation[1], rotation[2])
+        elif command_id == 5:
+            context = 'c5:%d' % station_id
+        elif command_id == 6:
+            context = 'c6:%d' % user_id
+        elif command_id == 7:
+            context = 'c7:%d:%d' % (station_id, user_id)
+        elif command_id == 8:
+            context = 'c8:%d:%f,%f,%f' % (user_id,
+                                          location[0], location[1], location[2])
         else:
             assert False
         self.env_sock.send(context.encode())
@@ -155,8 +187,3 @@ class WCsimEnvCore:
         # to confirm the command was done successfully
         assert self.env_sock.recv(1024).decode()[0:3] == 'suc'
 
-    def connect_user_to_station(self, station_id, user_id):
-        return self.command(3, station_id=station_id, user_id=user_id)
-
-    def move_station_to(self, station_id, location, rotation):
-        return self.command(4, station_id=station_id, location=location, rotation=rotation)
